@@ -5,7 +5,7 @@ This is my solution for [challenge #7](https://nearvember.near.org/challenge-7-v
 
 ## II) **My solution**
 ### 1) **Define data struct**
-```
+``` rust
 // Each candidate will have an id (unique) and related information (currently only candidate name)
 #[derive(BorshDeserialize, BorshSerialize, Deserialize, Serialize)]
 #[serde(crate = "near_sdk::serde")]
@@ -34,7 +34,7 @@ pub struct Voting {
   voter_track: LookupMap<String, i32>,
   voted_track: LookupMap<String, i32>,
 }
-```
+``` rust
 #### **I designed the above Voting structure for the following reasons:**
 - candidates: I use UnorderedMap because I need to iterate over the elements (for view_candidates function)
 - voter_track: To check that the user can only vote once, I think using a LookupMap is the simplest
@@ -45,7 +45,7 @@ https://www.near-sdk.io/contract-structure/collections
 
 ### 2) **Implement Method**
 **add_candidate**
-```
+``` rust
 pub fn add_candidate(&mut self, candidate: Candidate) -> bool {
     assert_eq!(candidate.candidate_id.is_empty(), false);
     assert_eq!(candidate.name.is_empty(), false);
@@ -62,7 +62,7 @@ pub fn add_candidate(&mut self, candidate: Candidate) -> bool {
   }
 ```
 **view_candidates**
-```
+``` rust
   pub fn view_candidates(&self) -> Vec<CandidateStats> {
     let mut vec_ret = <Vec<CandidateStats>>::new();
     for (candidate_id, candidate) in self.candidates.iter() {
@@ -81,7 +81,7 @@ pub fn add_candidate(&mut self, candidate: Candidate) -> bool {
   }
 ```
 **vote**
-```
+``` rust
   pub fn vote(&mut self, candidate_id: String) -> bool {
     let voter_id = env::signer_account_id();
     match self.voter_track.get(&voter_id) {
@@ -102,7 +102,7 @@ pub fn add_candidate(&mut self, candidate: Candidate) -> bool {
   }
 ```
 **view_single_candidate**
-```
+``` rust
 pub fn view_single_candidate(&self, candidate_id: String) -> CandidateStats {
     match self.candidates.get(&candidate_id) {
       Some(candidate) => {
@@ -135,18 +135,18 @@ Smart contract ID: **voting.rubikone.testnet**
     - export ACCOUNT_ID=&lt;your account id&gt;
 
 - add_candidate (candidate_id is unique)
-  ```
+  ``` shell
   near call $CONTRACT_NAME add_candidate '{"candidate": {"candidate_id": "1", "name": "John Cena"}}' --accountId $ACCOUNT_ID
-  ```
+  ``` 
 - view_candidates
-  ```
+  ``` shell
   near view $CONTRACT_NAME view_candidates '' --accountId $ACCOUNT_ID
   ```
 - vote
-  ```
+  ``` shell
   near call $CONTRACT_NAME vote '{"candidate_id": "0"}' --accountId $ACCOUNT_ID
   ```
 - view_single_candidate
-  ```
+  ``` shell
   near view $CONTRACT_NAME view_single_candidate '{"candidate_id": "0"}' --accountId $ACCOUNT_ID
   ```
