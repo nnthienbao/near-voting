@@ -34,7 +34,7 @@ pub struct Voting {
   voter_track: LookupMap<String, i32>,
   voted_track: LookupMap<String, i32>,
 }
-``` rust
+```
 #### **I designed the above Voting structure for the following reasons:**
 - candidates: I use UnorderedMap because I need to iterate over the elements (for view_candidates function)
 - voter_track: To check that the user can only vote once, I think using a LookupMap is the simplest
