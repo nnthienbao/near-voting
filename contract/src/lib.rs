@@ -27,7 +27,8 @@ pub struct Candidate {
   name: String,
 }
 
-#[derive(BorshDeserialize, BorshSerialize)]
+#[derive(BorshDeserialize, BorshSerialize, Deserialize, Serialize)]
+#[serde(crate = "near_sdk::serde")]
 pub struct CandidateStats {
   candidate_id: String,
   name: String,
