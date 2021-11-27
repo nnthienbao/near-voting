@@ -35,6 +35,21 @@ pub struct CandidateStats {
   total_vote: i32,
 }
 
+#[derive(BorshDeserialize, BorshSerialize, Deserialize, Serialize)]
+#[serde(crate = "near_sdk::serde")]
+pub struct CandidateChart {
+  candidate_id: String,
+  name: String,
+  series: Vec<PairTime>
+}
+
+#[derive(BorshDeserialize, BorshSerialize, Deserialize, Serialize)]
+#[serde(crate = "near_sdk::serde")]
+pub struct PairTime {
+  timestamp: i64,
+  value: i32
+}
+
 // Structs in Rust are similar to other languages, and may include impl keyword as shown below
 // Note: the names of the structs are not important when calling the smart contract, but the function names are
 #[near_bindgen]
@@ -43,6 +58,7 @@ pub struct Voting {
   candidates: UnorderedMap<String, Candidate>,
   voter_track: LookupMap<String, i32>,
   voted_track: LookupMap<String, i32>,
+  chart_tracking: LookupMap<String, UnorderedMap<i64, i32>>
 }
 
 impl Default for Voting {
@@ -51,6 +67,7 @@ impl Default for Voting {
       candidates: UnorderedMap::new(b"c".to_vec()),
       voter_track: LookupMap::new(b"vr".to_vec()),
       voted_track: LookupMap::new(b"vd".to_vec()),
+      chart_tracking: LookupMap::new(b"ct".to_vec())
     }
   }
 }
@@ -67,6 +84,7 @@ impl Voting {
       None => {
         self.candidates.insert(&candidate.candidate_id, &candidate);
         self.voted_track.insert(&candidate.candidate_id, &0);
+        self.chart_tracking.insert(&candidate.candidate_id, &UnorderedMap::new(env::sha256(&candidate.candidate_id.as_bytes())));
         return true;
       }
     }
@@ -119,9 +137,26 @@ impl Voting {
       }
       None => match self.voted_track.get(&candidate_id) {
         Some(result) => {
-          self.voted_track.insert(&candidate_id, &(result + 1));
-          self.voter_track.insert(&voter_id, &1);
-          return true;
+          match self.chart_tracking.get(&candidate_id) {
+            Some(mut map_chart) => {
+              let ts_in_millis = ((env::block_timestamp() / (86400 * 1000000)) as i64) * (86400 * 1000);
+              self.voted_track.insert(&candidate_id, &(result + 1));
+              self.voter_track.insert(&voter_id, &1);
+              match map_chart.get(&ts_in_millis) {
+                Some(total) => {
+                  map_chart.insert(&ts_in_millis, &(total + 1));
+                }
+                None => {
+                  map_chart.insert(&ts_in_millis, &1);
+                }
+              }
+              self.chart_tracking.insert(&candidate_id, &map_chart);
+              return true;
+            }
+            None => {
+              env::panic(format!("Map chart for candidate {} not found", candidate_id).as_bytes());
+            }
+          }
         }
         None => {
           env::panic(format!("Candidate {} not found", candidate_id).as_bytes());
@@ -140,6 +175,32 @@ impl Voting {
         return false;
       }
     }
+  }
+
+  pub fn get_chart(&mut self) -> Vec<CandidateChart> {
+    let mut vec_ret = <Vec<CandidateChart>>::new();
+    for (candidate_id, candidate) in self.candidates.iter() {
+      let mut c_chart = CandidateChart {
+        candidate_id: candidate.candidate_id,
+        name: candidate.name,
+        series: <Vec<PairTime>>::new()
+      };
+      match self.chart_tracking.get(&candidate_id) {
+        Some(map_tracking) => {
+          for (timestamp, value) in map_tracking.iter() {
+            c_chart.series.push(PairTime {
+              timestamp: timestamp,
+              value: value
+            });
+          }
+          vec_ret.push(c_chart);
+        }
+        None => {
+          env::panic(format!("Candidate {} not found", candidate_id).as_bytes());  
+        }
+      }
+    }
+    return vec_ret;
   }
 }
 
@@ -169,7 +230,7 @@ mod tests {
       predecessor_account_id: "carol_near".to_string(),
       input,
       block_index: 0,
-      block_timestamp: 0,
+      block_timestamp: 1638040621000000,
       account_balance: 0,
       account_locked_balance: 0,
       storage_usage: 0,
@@ -320,5 +381,56 @@ mod tests {
     contract.vote("0".to_string());
     let ret = contract.check_voted();
     assert_eq!(ret, true);
+  }
+
+  #[test]
+  fn should_get_chart_return_vec_empty() {
+    let context = get_context(vec![], false);
+    testing_env!(context);
+    let mut contract = Voting::default();
+    let ret = contract.get_chart();
+    assert_eq!(ret.len(), 0);
+  }
+
+  #[test]
+  fn should_get_chart_return_vec_with_size_true() {
+    let context = get_context(vec![], false);
+    testing_env!(context);
+    let mut contract = Voting::default();
+    contract.add_candidate(Candidate {
+      candidate_id: "0".to_string(),
+      name: "Trump".to_string(),
+    });
+    let mut ret = contract.get_chart();
+    assert_eq!(ret.len(), 1);
+
+    contract.add_candidate(Candidate {
+      candidate_id: "1".to_string(),
+      name: "John cena".to_string(),
+    });
+    ret = contract.get_chart();
+    assert_eq!(ret.len(), 2);
+  }
+
+  #[test]
+  fn should_get_chart_return_with_vote_true() {
+    let context = get_context(vec![], false);
+    testing_env!(context);
+    let mut contract = Voting::default();
+    contract.add_candidate(Candidate {
+      candidate_id: "0".to_string(),
+      name: "Trump".to_string(),
+    });
+
+    let mut ret = contract.get_chart();
+    assert_eq!(ret.len(), 1);
+    assert_eq!(ret[0].series.len(), 0);
+    
+    assert_eq!(contract.vote("0".to_string()), true);
+    ret = contract.get_chart();
+    assert_eq!(ret.len(), 1);
+    assert_eq!(ret[0].series.len(), 1);
+    assert_eq!(ret[0].series[0].timestamp, 1637971200000);
+    assert_eq!(ret[0].series[0].value, 1);
   }
 }
