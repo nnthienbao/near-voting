@@ -129,6 +129,18 @@ impl Voting {
       },
     }
   }
+
+  pub fn check_voted(&mut self) -> bool {
+    let voter_id = env::signer_account_id();
+    match self.voter_track.get(&voter_id) {
+      Some(_) => {
+        return true;
+      }
+      None => {
+        return false;
+      }
+    }
+  }
 }
 
 /*
@@ -285,5 +297,28 @@ mod tests {
       name: "Trump".to_string(),
     });
     contract.vote("1".to_string());
+  }
+
+  #[test]
+  fn should_check_voted_return_false() {
+    let context = get_context(vec![], false);
+    testing_env!(context);
+    let mut contract = Voting::default();
+    let ret = contract.check_voted();
+    assert_eq!(ret, false);
+  }
+
+  #[test]
+  fn should_check_voted_return_true() {
+    let context = get_context(vec![], false);
+    testing_env!(context);
+    let mut contract = Voting::default();
+    contract.add_candidate(Candidate {
+      candidate_id: "0".to_string(),
+      name: "Trump".to_string(),
+    });
+    contract.vote("0".to_string());
+    let ret = contract.check_voted();
+    assert_eq!(ret, true);
   }
 }
