@@ -50,7 +50,9 @@ export default function App({ walletConnection, accountId, contract }) {
       </AppBar>
       <Form
         isSignIn={isSignIn}
+        accountId={accountId}
         login={login}
+        contract={contract}
         />
     </>
   );

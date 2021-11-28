@@ -28,20 +28,7 @@ const StyledTableRow = styled(TableRow)(({ theme }) => ({
   },
 }));
 
-const rows = [
-  {
-    candidate_id: "0",
-    name: "Joe Biden",
-    total_vote: 12
-  },
-  {
-    candidate_id: "1",
-    name: "John Cena",
-    total_vote: 10
-  }
-];
-
-export default function TableStatitics({ walletConnection, accountId }) {
+export default function TableStatitics({ candidates }) {
   return (
     <TableContainer component={Paper}>
       <Table sx={{ minWidth: 480 }} aria-label="customized table">
@@ -52,7 +39,7 @@ export default function TableStatitics({ walletConnection, accountId }) {
           </TableRow>
         </TableHead>
         <TableBody>
-          {rows.map((row) => (
+          {candidates.map((row) => (
             <StyledTableRow key={row.candidate_id}>
               <StyledTableCell component="th" scope="row">
                 {row.name}
