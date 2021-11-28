@@ -1,0 +1,59 @@
+export CONTRACT_NAME=voting.rubikone.testnet
+export ACCOUNT_ID=rubikone.testnet
+
+near view $CONTRACT_NAME view_candidates '' --accountId $ACCOUNT_ID
+near call $CONTRACT_NAME add_candidate '{"candidate": {"candidate_id": "1", "name": "John Cena"}}' --accountId $ACCOUNT_ID
+
+near view $CONTRACT_NAME view_single_candidate '{"candidate_id": "0"}' --accountId $ACCOUNT_ID
+
+near call $CONTRACT_NAME vote '{"candidate_id": "0"}' --accountId $ACCOUNT_ID
+
+
+near create-account voting.rubikone.testnet --masterAccount rubikone.testnet --initialBalance 10
+
+near deploy --accountId voting.rubikone.testnet --wasmFile out/example.wasm
+
+
+
+
+- Set environment variable
+    - export CONTRACT_NAME=voting.rubikone.testnet
+    - export ACCOUNT_ID=&lt;your account id&gt;
+
+- add_candidate (candidate_id is unique)
+  ``` shell
+  near call $CONTRACT_NAME add_candidate '{"candidate": {"candidate_id": "1", "name": "John Cena"}}' --accountId $ACCOUNT_ID
+  ``` 
+- view_candidates
+  ``` shell
+  near view $CONTRACT_NAME view_candidates '' --accountId $ACCOUNT_ID
+  ```
+- vote
+  ``` shell
+  near call $CONTRACT_NAME vote '{"candidate_id": "0"}' --accountId $ACCOUNT_ID
+  ```
+- view_single_candidate
+  ``` shell
+  near view $CONTRACT_NAME view_single_candidate '{"candidate_id": "0"}' --accountId $ACCOUNT_ID
+
+My submition for chalenger #7
+CONTRACT_NAME=voting.rubikone.testnet
+
+1) My solution: https://github.com/nnthienbao/near-voting/blob/master/SOLUTION.md
+2) Repo: https://github.com/nnthienbao/near-voting
+3) Testing
+Set environment variable:
+    - export CONTRACT_NAME=voting.rubikone.testnet
+    - export ACCOUNT_ID=<your account id>
+
+add_candidate (candidate_id is unique):
+    near call $CONTRACT_NAME add_candidate '{"candidate": {"candidate_id": "1", "name": "John Cena"}}' --accountId $ACCOUNT_ID
+
+view_candidates:
+    near view $CONTRACT_NAME view_candidates '' --accountId $ACCOUNT_ID
+
+vote:
+    near call $CONTRACT_NAME vote '{"candidate_id": "0"}' --accountId $ACCOUNT_ID
+
+view_single_candidate:
+    near view $CONTRACT_NAME view_single_candidate '{"candidate_id": "0"}' --accountId $ACCOUNT_ID
