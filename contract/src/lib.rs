@@ -40,14 +40,14 @@ pub struct CandidateStats {
 pub struct CandidateChart {
   candidate_id: String,
   name: String,
-  series: Vec<PairTime>
+  series: Vec<PairTime>,
 }
 
 #[derive(BorshDeserialize, BorshSerialize, Deserialize, Serialize)]
 #[serde(crate = "near_sdk::serde")]
 pub struct PairTime {
   timestamp: i64,
-  value: i32
+  value: i32,
 }
 
 // Structs in Rust are similar to other languages, and may include impl keyword as shown below
@@ -58,7 +58,7 @@ pub struct Voting {
   candidates: UnorderedMap<String, Candidate>,
   voter_track: LookupMap<String, String>,
   voted_track: LookupMap<String, i32>,
-  chart_tracking: LookupMap<String, UnorderedMap<i64, i32>>
+  chart_tracking: LookupMap<String, UnorderedMap<i64, i32>>,
 }
 
 impl Default for Voting {
@@ -67,7 +67,7 @@ impl Default for Voting {
       candidates: UnorderedMap::new(b"c".to_vec()),
       voter_track: LookupMap::new(b"vr".to_vec()),
       voted_track: LookupMap::new(b"vd".to_vec()),
-      chart_tracking: LookupMap::new(b"ct".to_vec())
+      chart_tracking: LookupMap::new(b"ct".to_vec()),
     }
   }
 }
@@ -84,7 +84,10 @@ impl Voting {
       None => {
         self.candidates.insert(&candidate.candidate_id, &candidate);
         self.voted_track.insert(&candidate.candidate_id, &0);
-        self.chart_tracking.insert(&candidate.candidate_id, &UnorderedMap::new(env::sha256(&candidate.candidate_id.as_bytes())));
+        self.chart_tracking.insert(
+          &candidate.candidate_id,
+          &UnorderedMap::new(env::sha256(&candidate.candidate_id.as_bytes())),
+        );
         return true;
       }
     }
@@ -92,20 +95,18 @@ impl Voting {
 
   pub fn view_single_candidate(&self, candidate_id: String) -> CandidateStats {
     match self.candidates.get(&candidate_id) {
-      Some(candidate) => {
-        match self.voted_track.get(&candidate_id) {
-          Some(total_vote) => {
-            return CandidateStats {
-              candidate_id: candidate.candidate_id,
-              name: candidate.name,
-              total_vote: total_vote
-            }
-          }
-          None => {
-            env::panic(format!("Data asynchronous error").as_bytes());
+      Some(candidate) => match self.voted_track.get(&candidate_id) {
+        Some(total_vote) => {
+          return CandidateStats {
+            candidate_id: candidate.candidate_id,
+            name: candidate.name,
+            total_vote: total_vote,
           }
         }
-      }
+        None => {
+          env::panic(format!("Data asynchronous error").as_bytes());
+        }
+      },
       None => {
         env::panic(format!("{} not found", candidate_id).as_bytes());
       }
@@ -136,28 +137,27 @@ impl Voting {
         env::panic(format!("{} already voted in", voter_id).as_bytes());
       }
       None => match self.voted_track.get(&candidate_id) {
-        Some(result) => {
-          match self.chart_tracking.get(&candidate_id) {
-            Some(mut map_chart) => {
-              let ts_in_millis = ((env::block_timestamp() / (86400 * 1000000)) as i64) * (86400 * 1000);
-              self.voted_track.insert(&candidate_id, &(result + 1));
-              self.voter_track.insert(&voter_id, &candidate_id);
-              match map_chart.get(&ts_in_millis) {
-                Some(total) => {
-                  map_chart.insert(&ts_in_millis, &(total + 1));
-                }
-                None => {
-                  map_chart.insert(&ts_in_millis, &1);
-                }
+        Some(result) => match self.chart_tracking.get(&candidate_id) {
+          Some(mut map_chart) => {
+            let ts_in_millis =
+              ((env::block_timestamp() / (86400 * 1000000)) as i64) * (86400 * 1000);
+            self.voted_track.insert(&candidate_id, &(result + 1));
+            self.voter_track.insert(&voter_id, &candidate_id);
+            match map_chart.get(&ts_in_millis) {
+              Some(total) => {
+                map_chart.insert(&ts_in_millis, &(total + 1));
               }
-              self.chart_tracking.insert(&candidate_id, &map_chart);
-              return true;
+              None => {
+                map_chart.insert(&ts_in_millis, &1);
+              }
             }
-            None => {
-              env::panic(format!("Map chart for candidate {} not found", candidate_id).as_bytes());
-            }
+            self.chart_tracking.insert(&candidate_id, &map_chart);
+            return true;
           }
-        }
+          None => {
+            env::panic(format!("Map chart for candidate {} not found", candidate_id).as_bytes());
+          }
+        },
         None => {
           env::panic(format!("Candidate {} not found", candidate_id).as_bytes());
         }
@@ -165,13 +165,13 @@ impl Voting {
     }
   }
 
-  pub fn check_voted(&mut self, account_id: String) -> Candidate {
+  pub fn check_voted(&self, account_id: String) -> Option<Candidate> {
     match self.voter_track.get(&account_id) {
-      Some(candidate_id) => {
-        return self.candidates.get(&candidate_id).unwrap();
-      }
+      Some(candidate_id) =>  {
+        return self.candidates.get(&candidate_id);
+      },
       None => {
-        return Candidate {candidate_id: "-1".to_string(), name: "empty".to_string()}
+        return None
       }
     }
   }
@@ -182,20 +182,20 @@ impl Voting {
       let mut c_chart = CandidateChart {
         candidate_id: candidate.candidate_id,
         name: candidate.name,
-        series: <Vec<PairTime>>::new()
+        series: <Vec<PairTime>>::new(),
       };
       match self.chart_tracking.get(&candidate_id) {
         Some(map_tracking) => {
           for (timestamp, value) in map_tracking.iter() {
             c_chart.series.push(PairTime {
               timestamp: timestamp,
-              value: value
+              value: value,
             });
           }
           vec_ret.push(c_chart);
         }
         None => {
-          env::panic(format!("Candidate {} not found", candidate_id).as_bytes());  
+          env::panic(format!("Candidate {} not found", candidate_id).as_bytes());
         }
       }
     }
@@ -207,26 +207,24 @@ impl Voting {
     assert_eq!(signer_id, "rubikone.testnet".to_string());
 
     match self.voted_track.get(&candidate_id) {
-      Some(result) => {
-        match self.chart_tracking.get(&candidate_id) {
-          Some(mut map_chart) => {
-            self.voted_track.insert(&candidate_id, &(result + 1));
-            match map_chart.get(&timestamp) {
-              Some(total) => {
-                map_chart.insert(&timestamp, &(total + 1));
-              }
-              None => {
-                map_chart.insert(&timestamp, &1);
-              }
+      Some(result) => match self.chart_tracking.get(&candidate_id) {
+        Some(mut map_chart) => {
+          self.voted_track.insert(&candidate_id, &(result + 1));
+          match map_chart.get(&timestamp) {
+            Some(total) => {
+              map_chart.insert(&timestamp, &(total + 1));
             }
-            self.chart_tracking.insert(&candidate_id, &map_chart);
-            return true;
+            None => {
+              map_chart.insert(&timestamp, &1);
+            }
           }
-          None => {
-            env::panic(format!("Map chart for candidate {} not found", candidate_id).as_bytes());
-          }
+          self.chart_tracking.insert(&candidate_id, &map_chart);
+          return true;
         }
-      }
+        None => {
+          env::panic(format!("Map chart for candidate {} not found", candidate_id).as_bytes());
+        }
+      },
       None => {
         env::panic(format!("Candidate {} not found", candidate_id).as_bytes());
       }
@@ -415,10 +413,9 @@ mod tests {
   fn should_check_voted_return_false() {
     let context = get_context(vec![], false);
     testing_env!(context);
-    let mut contract = Voting::default();
+    let contract = Voting::default();
     let ret = contract.check_voted("bob_near".to_string());
-    assert_eq!(ret.candidate_id, "-1".to_string());
-    assert_eq!(ret.name, "empty".to_string());
+    assert_eq!(ret.is_none(), true);
   }
 
   #[test]
@@ -432,8 +429,10 @@ mod tests {
     });
     contract.vote("0".to_string());
     let ret = contract.check_voted("bob_near".to_string());
-    assert_eq!(ret.candidate_id, "0".to_string());
-    assert_eq!(ret.name, "Trump".to_string());
+    assert_eq!(ret.is_some(), true);
+    let candidate = ret.unwrap();
+    assert_eq!(candidate.candidate_id, "0".to_string());
+    assert_eq!(candidate.name, "Trump".to_string());
   }
 
   #[test]
@@ -478,7 +477,6 @@ mod tests {
     let mut ret = contract.get_chart();
     assert_eq!(ret.len(), 1);
     assert_eq!(ret[0].series.len(), 0);
-    
     assert_eq!(contract.vote("0".to_string()), true);
     ret = contract.get_chart();
     assert_eq!(ret.len(), 1);
