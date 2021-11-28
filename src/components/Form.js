@@ -4,9 +4,11 @@ import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
 import Big from 'big.js';
+import _ from 'lodash'
 import TableStatitics from "./TableStatitics";
 import Chart from "./Chart";
 import AddCandidateDialog from "./AddCandidateDialog";
+import VotingDialog from "./VotingDialog";
 
 const BOATLOAD_OF_GAS = Big(3).times(10 ** 13).toFixed();
 
@@ -14,6 +16,8 @@ export default function Form({ isSignIn, accountId, login, contract }) {
   const [candidates, setCandidates] = useState([]);
   const [votingFor, setVotingFor] = useState(null);
   const [openAddCandidateDialog, setOpenAddCandidateDialog] = useState(false);
+
+  const [openVotingDialog, setOpenVotingDialog] = useState(false);
 
   useEffect(() => {
     fetchCandidates();
@@ -23,13 +27,20 @@ export default function Form({ isSignIn, accountId, login, contract }) {
   }, []);
 
   const fetchCandidates = () => {
-    contract.view_candidates().then(setCandidates);
+    contract.view_candidates().then(candidatesRes => {
+      const cSort = _.orderBy(candidatesRes, ['total_vote'], 'desc');
+      setCandidates(cSort);
+    });
   }
 
   const addCandidate = ({ name }) => {
     const candidate_id = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     return contract.add_candidate({candidate: {candidate_id, name}}, BOATLOAD_OF_GAS, "0");
   };
+
+  const vote = ({candidate_id}) => {
+    return contract.vote({candidate_id}, BOATLOAD_OF_GAS, "0");
+  }
 
   return (
     <>
@@ -57,7 +68,7 @@ export default function Form({ isSignIn, accountId, login, contract }) {
                 </Typography>
               )}
               <Stack direction="row" spacing={2}>
-                <Button disabled={votingFor !== null} variant="outlined">
+                <Button onClick={() => setOpenVotingDialog(true)} disabled={votingFor !== null} variant="outlined">
                   Press to vote
                 </Button>
                 <Button onClick={() => setOpenAddCandidateDialog(true)} variant="outlined">Add Candidate</Button>
@@ -77,6 +88,13 @@ export default function Form({ isSignIn, accountId, login, contract }) {
         open={openAddCandidateDialog}
         setOpen={setOpenAddCandidateDialog}
         addCandidate={addCandidate}
+        fetchCandidates={fetchCandidates}
+      />
+      <VotingDialog
+        open={openVotingDialog}
+        setOpen={setOpenVotingDialog}
+        candidates={candidates}
+        vote={vote}
         fetchCandidates={fetchCandidates}
       />
     </>
