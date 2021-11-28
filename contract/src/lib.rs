@@ -40,14 +40,14 @@ pub struct CandidateStats {
 pub struct CandidateChart {
   candidate_id: String,
   name: String,
-  series: Vec<PairTime>,
+  data: Vec<PairTime>,
 }
 
 #[derive(BorshDeserialize, BorshSerialize, Deserialize, Serialize)]
 #[serde(crate = "near_sdk::serde")]
 pub struct PairTime {
-  timestamp: i64,
-  value: i32,
+  x: i64,
+  y: i32,
 }
 
 // Structs in Rust are similar to other languages, and may include impl keyword as shown below
@@ -140,7 +140,7 @@ impl Voting {
         Some(result) => match self.chart_tracking.get(&candidate_id) {
           Some(mut map_chart) => {
             let ts_in_millis =
-              ((env::block_timestamp() / (86400 * 1000000)) as i64) * (86400 * 1000);
+              ((env::block_timestamp() / (86400 * 1000000000)) as i64) * (86400 * 1000);
             self.voted_track.insert(&candidate_id, &(result + 1));
             self.voter_track.insert(&voter_id, &candidate_id);
             match map_chart.get(&ts_in_millis) {
@@ -176,20 +176,20 @@ impl Voting {
     }
   }
 
-  pub fn get_chart(&mut self) -> Vec<CandidateChart> {
+  pub fn get_chart(&self) -> Vec<CandidateChart> {
     let mut vec_ret = <Vec<CandidateChart>>::new();
     for (candidate_id, candidate) in self.candidates.iter() {
       let mut c_chart = CandidateChart {
         candidate_id: candidate.candidate_id,
         name: candidate.name,
-        series: <Vec<PairTime>>::new(),
+        data: <Vec<PairTime>>::new(),
       };
       match self.chart_tracking.get(&candidate_id) {
         Some(map_tracking) => {
           for (timestamp, value) in map_tracking.iter() {
-            c_chart.series.push(PairTime {
-              timestamp: timestamp,
-              value: value,
+            c_chart.data.push(PairTime {
+              x: timestamp,
+              y: value,
             });
           }
           vec_ret.push(c_chart);
@@ -258,7 +258,7 @@ mod tests {
       predecessor_account_id: "carol_near".to_string(),
       input,
       block_index: 0,
-      block_timestamp: 1638040621000000,
+      block_timestamp: 1638040621000000000,
       account_balance: 0,
       account_locked_balance: 0,
       storage_usage: 0,
@@ -439,7 +439,7 @@ mod tests {
   fn should_get_chart_return_vec_empty() {
     let context = get_context(vec![], false);
     testing_env!(context);
-    let mut contract = Voting::default();
+    let contract = Voting::default();
     let ret = contract.get_chart();
     assert_eq!(ret.len(), 0);
   }
@@ -476,13 +476,13 @@ mod tests {
 
     let mut ret = contract.get_chart();
     assert_eq!(ret.len(), 1);
-    assert_eq!(ret[0].series.len(), 0);
+    assert_eq!(ret[0].data.len(), 0);
     assert_eq!(contract.vote("0".to_string()), true);
     ret = contract.get_chart();
     assert_eq!(ret.len(), 1);
-    assert_eq!(ret[0].series.len(), 1);
-    assert_eq!(ret[0].series[0].timestamp, 1637971200000);
-    assert_eq!(ret[0].series[0].value, 1);
+    assert_eq!(ret[0].data.len(), 1);
+    assert_eq!(ret[0].data[0].x, 1637971200000);
+    assert_eq!(ret[0].data[0].y, 1);
   }
 
   #[test]
@@ -511,15 +511,15 @@ mod tests {
     contract.vote_fake("0".to_string(), 1637971200000);
     let chart = contract.get_chart();
     assert_eq!(chart.len(), 1);
-    assert_eq!(chart[0].series.len(), 1);
-    assert_eq!(chart[0].series[0].timestamp, 1637971200000);
-    assert_eq!(chart[0].series[0].value, 2);
+    assert_eq!(chart[0].data.len(), 1);
+    assert_eq!(chart[0].data[0].x, 1637971200000);
+    assert_eq!(chart[0].data[0].y, 2);
 
     contract.vote_fake("0".to_string(), 1638057600000);
     let chart2 = contract.get_chart();
     assert_eq!(chart2.len(), 1);
-    assert_eq!(chart2[0].series.len(), 2);
-    assert_eq!(chart2[0].series[1].timestamp, 1638057600000);
-    assert_eq!(chart2[0].series[1].value, 1);
+    assert_eq!(chart2[0].data.len(), 2);
+    assert_eq!(chart2[0].data[1].x, 1638057600000);
+    assert_eq!(chart2[0].data[1].y, 1);
   }
 }

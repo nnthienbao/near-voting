@@ -6,7 +6,7 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import Button from '@mui/material/Button';
 
-export default function AddCandidateDialog({ open, setOpen, addCandidate, fetchCandidates }) {
+export default function AddCandidateDialog({ open, setOpen, addCandidate, fetchCandidates, fetchChart }) {
   const [name, setName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [nameError, setNameError] = useState(false);
@@ -26,6 +26,7 @@ export default function AddCandidateDialog({ open, setOpen, addCandidate, fetchC
     addCandidate({name}).then(res => {
       setIsLoading(false);
       fetchCandidates();
+      fetchChart();
       setOpen(false);
     });
   }

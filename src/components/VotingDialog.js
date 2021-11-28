@@ -10,7 +10,7 @@ import DialogTitle from "@mui/material/DialogTitle";
 import Button from "@mui/material/Button";
 import DialogContent from "@mui/material/DialogContent";
 
-export default function VotingDialog({ open, setOpen, candidates, vote, fetchCandidates }) {
+export default function VotingDialog({ open, setOpen, candidates, vote, fetchCandidates, fetchChart }) {
   const [isLoading, setIsLoading] = useState(false);
   const [candidateChoose, setCandidateChoose] = useState(null);
 
@@ -23,6 +23,7 @@ export default function VotingDialog({ open, setOpen, candidates, vote, fetchCan
       setIsLoading(true);
       vote({candidate_id: candidateChoose}).then(res => {
         fetchCandidates();
+        fetchChart();
         setIsLoading(false);
         setOpen(false);
       })
@@ -40,7 +41,7 @@ export default function VotingDialog({ open, setOpen, candidates, vote, fetchCan
           {candidates.length > 0 && (
             <RadioGroup
               aria-label="Voting"
-              defaultValue={candidates[0].candidate_id}
+              value={candidateChoose}
               onChange={(e) => setCandidateChoose(e.target.value)}
               name="radio-buttons-group"
             >

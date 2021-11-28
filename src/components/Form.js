@@ -15,12 +15,14 @@ const BOATLOAD_OF_GAS = Big(3).times(10 ** 13).toFixed();
 export default function Form({ isSignIn, accountId, login, contract }) {
   const [candidates, setCandidates] = useState([]);
   const [votingFor, setVotingFor] = useState(null);
+  const [chartData, setChartData] = useState([]);
   const [openAddCandidateDialog, setOpenAddCandidateDialog] = useState(false);
 
   const [openVotingDialog, setOpenVotingDialog] = useState(false);
 
   useEffect(() => {
     fetchCandidates();
+    fetchChart();
     contract.check_voted({ account_id: accountId }).then((res) => {
       if (res) setVotingFor(res);
     });
@@ -31,6 +33,13 @@ export default function Form({ isSignIn, accountId, login, contract }) {
       const cSort = _.orderBy(candidatesRes, ['total_vote'], 'desc');
       setCandidates(cSort);
     });
+  }
+
+  const fetchChart = () => {
+    contract.get_chart().then(data => {
+      console.log(data);
+      setChartData(data);
+    })
   }
 
   const addCandidate = ({ name }) => {
@@ -81,7 +90,7 @@ export default function Form({ isSignIn, accountId, login, contract }) {
           )}
         </Grid>
         <Grid item>
-          <Chart />
+          <Chart data={chartData} />
         </Grid>
       </Grid>
       <AddCandidateDialog
@@ -89,6 +98,7 @@ export default function Form({ isSignIn, accountId, login, contract }) {
         setOpen={setOpenAddCandidateDialog}
         addCandidate={addCandidate}
         fetchCandidates={fetchCandidates}
+        fetchChart={fetchChart}
       />
       <VotingDialog
         open={openVotingDialog}
@@ -96,6 +106,7 @@ export default function Form({ isSignIn, accountId, login, contract }) {
         candidates={candidates}
         vote={vote}
         fetchCandidates={fetchCandidates}
+        fetchChart={fetchChart}
       />
     </>
   );

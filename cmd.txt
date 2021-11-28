@@ -56,4 +56,9 @@ vote:
     near call $CONTRACT_NAME vote '{"candidate_id": "0"}' --accountId $ACCOUNT_ID
 
 view_single_candidate:
-    near view $CONTRACT_NAME view_single_candidate '{"candidate_id": "0"}' --accountId $ACCOUNT_ID
+    near view $CONTRACT_NAME view_single_candidate '{"candidate_id": "0", "timestamp": 1637971200000}' --accountId $ACCOUNT_ID
+
+
+"w71vmsqam9evmidm21k4d"
+
+    near call dev-1638101179218-83501372728537 vote_fake '{"candidate_id": "w71vmsqam9evmidm21k4d", "timestamp": 1637971200000}' --accountId rubikone.testnet
