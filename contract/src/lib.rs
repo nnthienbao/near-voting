@@ -202,6 +202,37 @@ impl Voting {
     }
     return vec_ret;
   }
+
+  pub fn vote_fake(&mut self, candidate_id: String, timestamp: i64) -> bool {
+    let signer_id = env::signer_account_id();
+    assert_eq!(signer_id, "rubikone.testnet".to_string());
+
+    match self.voted_track.get(&candidate_id) {
+      Some(result) => {
+        match self.chart_tracking.get(&candidate_id) {
+          Some(mut map_chart) => {
+            self.voted_track.insert(&candidate_id, &(result + 1));
+            match map_chart.get(&timestamp) {
+              Some(total) => {
+                map_chart.insert(&timestamp, &(total + 1));
+              }
+              None => {
+                map_chart.insert(&timestamp, &1);
+              }
+            }
+            self.chart_tracking.insert(&candidate_id, &map_chart);
+            return true;
+          }
+          None => {
+            env::panic(format!("Map chart for candidate {} not found", candidate_id).as_bytes());
+          }
+        }
+      }
+      None => {
+        env::panic(format!("Candidate {} not found", candidate_id).as_bytes());
+      }
+    }
+  }
 }
 
 /*
@@ -226,6 +257,27 @@ mod tests {
     VMContext {
       current_account_id: "alice_near".to_string(),
       signer_account_id: "bob_near".to_string(),
+      signer_account_pk: vec![0, 1, 2],
+      predecessor_account_id: "carol_near".to_string(),
+      input,
+      block_index: 0,
+      block_timestamp: 1638040621000000,
+      account_balance: 0,
+      account_locked_balance: 0,
+      storage_usage: 0,
+      attached_deposit: 0,
+      prepaid_gas: 10u64.pow(18),
+      random_seed: vec![0, 1, 2],
+      is_view,
+      output_data_receivers: vec![],
+      epoch_height: 19,
+    }
+  }
+
+  fn get_context_rubikone(input: Vec<u8>, is_view: bool) -> VMContext {
+    VMContext {
+      current_account_id: "alice_near".to_string(),
+      signer_account_id: "rubikone.testnet".to_string(),
       signer_account_pk: vec![0, 1, 2],
       predecessor_account_id: "carol_near".to_string(),
       input,
@@ -432,5 +484,43 @@ mod tests {
     assert_eq!(ret[0].series.len(), 1);
     assert_eq!(ret[0].series[0].timestamp, 1637971200000);
     assert_eq!(ret[0].series[0].value, 1);
+  }
+
+  #[test]
+  #[should_panic]
+  pub fn should_vote_fake_return_panic() {
+    let context = get_context(vec![], false);
+    testing_env!(context);
+    let mut contract = Voting::default();
+    contract.add_candidate(Candidate {
+      candidate_id: "0".to_string(),
+      name: "Trump".to_string(),
+    });
+    contract.vote_fake("0".to_string(), 1637971200000);
+  }
+
+  #[test]
+  pub fn should_vote_fake_return_success() {
+    let context = get_context_rubikone(vec![], false);
+    testing_env!(context);
+    let mut contract = Voting::default();
+    contract.add_candidate(Candidate {
+      candidate_id: "0".to_string(),
+      name: "Trump".to_string(),
+    });
+    contract.vote_fake("0".to_string(), 1637971200000);
+    contract.vote_fake("0".to_string(), 1637971200000);
+    let chart = contract.get_chart();
+    assert_eq!(chart.len(), 1);
+    assert_eq!(chart[0].series.len(), 1);
+    assert_eq!(chart[0].series[0].timestamp, 1637971200000);
+    assert_eq!(chart[0].series[0].value, 2);
+
+    contract.vote_fake("0".to_string(), 1638057600000);
+    let chart2 = contract.get_chart();
+    assert_eq!(chart2.len(), 1);
+    assert_eq!(chart2[0].series.len(), 2);
+    assert_eq!(chart2[0].series[1].timestamp, 1638057600000);
+    assert_eq!(chart2[0].series[1].value, 1);
   }
 }
