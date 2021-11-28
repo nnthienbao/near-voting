@@ -56,7 +56,7 @@ pub struct PairTime {
 #[derive(BorshDeserialize, BorshSerialize)]
 pub struct Voting {
   candidates: UnorderedMap<String, Candidate>,
-  voter_track: LookupMap<String, i32>,
+  voter_track: LookupMap<String, String>,
   voted_track: LookupMap<String, i32>,
   chart_tracking: LookupMap<String, UnorderedMap<i64, i32>>
 }
@@ -141,7 +141,7 @@ impl Voting {
             Some(mut map_chart) => {
               let ts_in_millis = ((env::block_timestamp() / (86400 * 1000000)) as i64) * (86400 * 1000);
               self.voted_track.insert(&candidate_id, &(result + 1));
-              self.voter_track.insert(&voter_id, &1);
+              self.voter_track.insert(&voter_id, &candidate_id);
               match map_chart.get(&ts_in_millis) {
                 Some(total) => {
                   map_chart.insert(&ts_in_millis, &(total + 1));
@@ -165,14 +165,13 @@ impl Voting {
     }
   }
 
-  pub fn check_voted(&mut self) -> bool {
-    let voter_id = env::signer_account_id();
-    match self.voter_track.get(&voter_id) {
-      Some(_) => {
-        return true;
+  pub fn check_voted(&mut self, account_id: String) -> Candidate {
+    match self.voter_track.get(&account_id) {
+      Some(candidate_id) => {
+        return self.candidates.get(&candidate_id).unwrap();
       }
       None => {
-        return false;
+        return Candidate {candidate_id: "-1".to_string(), name: "empty".to_string()}
       }
     }
   }
@@ -417,8 +416,9 @@ mod tests {
     let context = get_context(vec![], false);
     testing_env!(context);
     let mut contract = Voting::default();
-    let ret = contract.check_voted();
-    assert_eq!(ret, false);
+    let ret = contract.check_voted("bob_near".to_string());
+    assert_eq!(ret.candidate_id, "-1".to_string());
+    assert_eq!(ret.name, "empty".to_string());
   }
 
   #[test]
@@ -431,8 +431,9 @@ mod tests {
       name: "Trump".to_string(),
     });
     contract.vote("0".to_string());
-    let ret = contract.check_voted();
-    assert_eq!(ret, true);
+    let ret = contract.check_voted("bob_near".to_string());
+    assert_eq!(ret.candidate_id, "0".to_string());
+    assert_eq!(ret.name, "Trump".to_string());
   }
 
   #[test]
